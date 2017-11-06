@@ -25,15 +25,18 @@ def handle_events(events):
 if __name__ == "__main__":
     pygame.midi.init()
     pygame.mixer.init()
-    soundRain = pygame.mixer.Sound(r"/home/daniel/Music/Treo/Regn.wav")
-    soundThunder = pygame.mixer.Sound(r"/home/daniel/Music/Treo/Åska.wav")
+    path = r"/media/daniel/Data/Treo/"
+    soundRain = pygame.mixer.Sound(path + r"Regn.wav")
+    soundThunder = pygame.mixer.Sound(path + r"Åska.wav")
 
     print pygame.midi.get_default_output_id()
     for i in range(pygame.midi.get_count()):
         info = pygame.midi.get_device_info(i)
         if info[2]:
             print "{}: Input: {}".format(i, info)
-    midiIn = pygame.midi.Input(5)
+            if "E-MU" in info[1]:
+                emuID = i
+    midiIn = pygame.midi.Input(emuID)
   #  pygame.mixer.music.load(r"/home/daniel/Music/Treo/Åska.wav")
   #  pygame.mixer.music.load(r"/home/daniel/Music/Treo/Treo-Falling_en_inspelning.mp3")
     
