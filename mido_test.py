@@ -114,9 +114,78 @@ Uploader: andrea1
                 col = 0
         return pretty_string
     
-    def print_reg(self):
-        """The registration format"""
+    def parse_header(self):
+        """Parse the header"""
+        # Name, Number of bytes
+        header_mapping = [["Kawai ID"      ,  1],
+                   ["Channel?"      , 1],
+                   ["Function no.?"  , 1],
+                   ["Device ID?", 1],
+                   ["Model ID?", 1],
+                   ["Command", 1],
+                   ["Sub command?", 1],
+                   ["Unknown 1", 1],]
         
+        header = []
+        idx=0
+        for name, n_bytes in header_mapping:
+            if n_bytes == 2:
+                header += [name, self.syx_data[idx+1]*0x10 + self.syx_data[idx]]
+            else:
+                header += [name, self.syx_data[idx]]
+            idx += n_bytes
+            
+        return header
+           
+    
+    def get_registers(self):
+        """The registration format"""
+        offset = 22-8*2
+        
+        # Name, number of bytes, offset
+        register_mapping = [
+                ["U6"            , 2,   1],
+                ["U6"            , 2,   1],
+                ["U6"            , 2,   1],
+                ["U6"            , 2,   1],
+                ["U6"            , 2,   1],
+                ["U6"            , 2,   1],
+                ["U6"            , 2,   1],
+                ["U7"            , 2,   1],
+                ["Sound 1"       , 2,   1],
+                ["Sound 2"       , 2,   1],
+                ["U1"            , 2,   1],
+                ["Nåt"           , 2,   1],
+                ["Rhythm"        , 2,   1],
+                ["Detune"        , 2,   0],
+                ["U4"            , 2,   1],
+                ["U5"            , 2,   1],
+
+
+
+                
+                ]
+        registers = []
+        idx = offset
+        for _ in range(20):
+            register = []
+            for name, n_bytes, offset in register_mapping:
+                if n_bytes == 2:
+                    register += [[name, self.syx_data[idx+1]*0x10 + self.syx_data[idx], offset]]
+                else:
+                    register += [[name, self.syx_data[idx], offset]]
+                idx += n_bytes
+            registers.append(register)
+        
+        for register_idx, register in enumerate(registers):
+            for name, value, offset in register:
+                logger.info(f"{register_idx:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})")
+
+        
+        return register   
+        
+
+         
         
     def create_checksum(self, start_idx):
         """Create checksum"""
@@ -131,7 +200,8 @@ Uploader: andrea1
         """Investigate data"""
         logger.info(f"Name: {self.name} Len: {len(self.syx_data):7} Data: {self.syx_data[:10]}")
         logger.info(f"Data: {self.syx_data[:10]}")
-        self.print_reg()
+        logger.info(f"Header: {self.parse_header()}")
+        self.get_registers()
 #        self.dump_to_file(filename = self.name + "_pretty")
         # for idx in range(20):
         #     self.create_checksum(start_idx = idx)
@@ -173,6 +243,8 @@ def run():
         sysex_dict[key] = FS680_sysex(name = key)
         #sysex_dict[key].from_message(message=input_port.receive())
         sysex_dict[key].from_hex_file(filename=key+"_pretty")
+        
+        #sysex_dict[key].dump_to_file(filename = key + "_pretty")
         
     for _,syx in sysex_dict.items():
         syx.investigate()
