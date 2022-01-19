@@ -122,9 +122,7 @@ Uploader: andrea1
                    ["Function no.?"  , 1],
                    ["Device ID?", 1],
                    ["Model ID?", 1],
-                   ["Command", 1],
-                   ["Sub command?", 1],
-                   ["Unknown 1", 1],]
+                   ["Command", 1], ]
         
         header = []
         idx=0
@@ -140,28 +138,32 @@ Uploader: andrea1
     
     def get_registers(self):
         """The registration format"""
-        offset = 22-8*2
+        offset = 6
         
         # Name, number of bytes, offset
         register_mapping = [
-                ["U6"            , 2,   1],
-                ["U6"            , 2,   1],
-                ["U6"            , 2,   1],
-                ["U6"            , 2,   1],
-                ["U6"            , 2,   1],
-                ["U6"            , 2,   1],
-                ["U6"            , 2,   1],
-                ["U7"            , 2,   1],
+                ["Lower mode"    , 2,   0],  # 0: Normal 1: Auto 2: Drum
+                ["Position?"     , 2,   1],
+                ["U2"            , 2,   1],
+                ["Volume Sound 1", 2,   0],
+                ["Volume Sound 2", 2,   0],
+                ["Volume Chord"  , 2,   0],
+                ["Volume Bass"   , 2,   0],
+                ["Volume Rhythm" , 2,   0],
                 ["Sound 1"       , 2,   1],
                 ["Sound 2"       , 2,   1],
-                ["U1"            , 2,   1],
-                ["Nåt"           , 2,   1],
+                ["U3"            , 2,   1],
+                ["U4"            , 2,   1],
                 ["Rhythm"        , 2,   1],
                 ["Detune"        , 2,   0],
-                ["U4"            , 2,   1],
+                ["Tempo"         , 2,   1],  # 0x14 (20) => 100, 0x0A (10) => 80
                 ["U5"            , 2,   1],
 
+# Tempo
+# 3    SyC  (0x7F)
+# 4     216 (0x3F)
 
+# Position: 1: 1, 2: 2, 3:1+2
 
                 
                 ]
@@ -179,11 +181,19 @@ Uploader: andrea1
         
         for register_idx, register in enumerate(registers):
             for name, value, offset in register:
-                logger.info(f"{register_idx:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})")
+                logger.info(f"{register_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})")
 
         
-        return register   
+        return registers  
         
+    def pretty_print_registers(self):
+        """Pretty print registers"""
+        registers_str = ""
+        for register_idx, register in enumerate(self.get_registers()):
+            for name, value, offset in register:
+                registers_str += f"{register_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})\n"
+                
+        return registers_str
 
          
         
@@ -210,6 +220,9 @@ Uploader: andrea1
         """Dump to file"""
         with open(filename, 'w') as f1:
             f1.write(self.pretty_print())
+
+        with open(filename+"_2", 'w') as f1:
+            f1.write(self.pretty_print_registers())
     
 
     
@@ -241,10 +254,10 @@ def run():
     for key in ["REG"]: #, "SYN", "ACC", "OFA"]:
         logger.info(f"Receive {key}...")
         sysex_dict[key] = FS680_sysex(name = key)
-        #sysex_dict[key].from_message(message=input_port.receive())
-        sysex_dict[key].from_hex_file(filename=key+"_pretty")
+        sysex_dict[key].from_message(message=input_port.receive())
+        #sysex_dict[key].from_hex_file(filename=key+"_pretty")
         
-        #sysex_dict[key].dump_to_file(filename = key + "_pretty")
+        sysex_dict[key].dump_to_file(filename = key + "_pretty")
         
     for _,syx in sysex_dict.items():
         syx.investigate()
