@@ -1,5 +1,8 @@
 import mido
 import logging
+import time
+
+from random import randrange
 
 logger = logging.getLogger()
 #sysex data=(64,0,33,5,3,1,1,0,3,3,8,0,11,0,11,0,11,0,11,0,11,0,10,0,10,0,10,0,8,3,10,3,6,0,7,2,0,0,1,0,3,3,8,0,12,0,12,0,11,0,11,0,11,0,4,1,10,1,9,1,9,3,7,3,2,0,6,3,0,0,1,0,3,3,8,0,14,0,14,0,11,0,11,0,11,0,2,4,4,0,14,1,9,3,14,1,1,0,13,1,0,0,1,0,3,2,8,0,14,0,14,0,11,0,11,0,11,0,3,2,1,2,0,0,9,3,13,0,2,0,6,2,0,0,1,0,3,2,8,0,10,0,10,0,11,0,11,0,11,0,6,5,0,2,2,3,9,3,0,1,1,0,11,0,0,0,1,0,3,3,8,0,14,0,14,0,11,0,11,0,11,0,5,4,13,4,9,1,9,1,8,5,1,0,1,2,0,0,1,0,3,2,8,0,10,0,10,0,11,0,11,0,11,0,8,0,10,0,4,2,8,3,3,4,2,0,0,2,0,0,1,0,3,1,8,0,9,0,9,0,11,0,11,0,11,0,5,2,14,0,0,0,8,3,4,4,2,0,0,2,0,0,5,0,0,0,8,0,14,0,14,0,11,0,11,0,11,0,0,4,0,0,8,1,8,3,11,5,1,0,13,0,0,0,5,0,0,0,8,0,13,0,13,0,11,0,11,0,11,0,12,0,15,1,10,0,8,3,2,3,2,0,13,2,0,0,1,0,3,3,8,0,11,0,11,0,11,0,11,0,11,0,10,0,10,0,10,0,8,3,10,3,6,0,7,2,0,0,1,0,3,3,8,0,12,0,12,0,11,0,11,0,11,0,4,1,10,1,9,1,9,3,7,3,2,0,6,3,0,0,1,0,3,3,8,0,14,0,14,0,11,0,11,0,11,0,2,4,4,0,14,1,9,3,14,1,1,0,13,1,0,0,1,0,3,2,8,0,14,0,14,0,11,0,11,0,11,0,3,2,1,2,0,0,9,3,13,0,2,0,6,2,0,0,1,0,3,2,8,0,10,0,10,0,11,0,11,0,11,0,6,5,0,2,2,3,9,3,0,1,1,0,11,0,0,0,1,0,3,3,8,0,14,0,14,0,11,0,11,0,11,0,5,4,13,4,9,1,9,1,8,5,1,0,1,2,0,0,1,0,3,2,8,0,10,0,10,0,11,0,11,0,11,0,8,0,10,0,4,2,8,3,3,4,2,0,0,2,0,0,1,0,3,1,8,0,9,0,9,0,11,0,11,0,11,0,5,2,14,0,0,0,8,3,4,4,2,0,0,2,0,0,5,0,0,0,8,0,14,0,14,0,11,0,11,0,11,0,0,4,0,0,8,1,8,3,11,5,1,0,13,0,0,0,5,0,0,0,8,0,13,0,13,0,11,0,11,0,11,0,12,0,15,1,10,0,8,3,2,3,2,0,13,2,0,0) time=0
@@ -225,6 +228,108 @@ Uploader: andrea1
             f1.write(self.pretty_print_registers())
     
 
+class SyxTester:
+    """Class for testing sysex messages"""
+    def __init__(self, input_port, output_port):
+        """Init"""
+        self.input_port = input_port
+        self.output_port = output_port
+        
+    def generate_random_message(self, max_len):
+        """Generate random message"""
+        msg_len = randrange(1, max_len)
+        msg = []
+        for _ in range(msg_len):
+            msg.append(randrange(0x7F))
+        
+#        logger.info(msg)
+        return msg
+        
+    def test(self):
+        """Test sysex messages"""
+
+        device_id = 0x00
+        old_msg = mido.Message(type="sysex", data = [])
+        
+        msg_list = []
+        while True:
+            # Device inquiry
+#             F0 7E <device ID> 06 01 F7
+# F0 7E <device ID> Universal System Exclusive Non-real time header
+# 06 General Information (sub-ID#1)
+# 01 Identity Request (sub-ID#2)
+# F7 EOX
+# Sysex sent from FS680:
+# Sound 1:            40 00 10 05 03 00 00
+# Sound 2:            40 00 10 05 03 00 01
+# Sound 1+2 (dual):   40 00 10 05 03 00 40
+# Detune 0:           40 00 10 05 03 00 40
+# Detune 7:           40 00 10 05 03 00 47
+# Duet on:            40 00 10 05 03 01 7F
+# Duet off:           40 00 10 05 03 01 00
+# Sustain on:         40 00 10 05 03 02 7F
+# Sustain off:        40 00 10 05 03 02 00
+# OFA on:             40 00 10 05 03 03 7F
+# OFA off:            40 00 10 05 03 03 00
+# Lower mode Auto:    40 00 10 05 03 04 01
+# Lower mode normal:  40 00 10 05 03 04 00
+# Lower mode drum:    40 00 10 05 03 04 02
+# Tempo 48:           40 00 10 05 03 05 00
+# Tempo 52:           40 00 10 05 03 05 01
+# Tempo 216:          40 00 10 05 03 05 3F
+# Tempo SyC:          40 00 10 05 03 05 7F
+# Stereo Chorus on: CC 93=127
+# Stereo Chorus on: CC 93=0
+#
+# Melody volume: Channel 0,1: CC: 7 Value: 0-127
+# Chord volume:  Channel: 2 CC: 7 Value: 0-127
+# Bass volume:   Channel: 3 CC: 7 Value: 0-127
+# Rhythm volume: Channel: 9 CC: 7 Value: 0-127
+#
+# Recorder play 1:  40 00 10 05 03 04 01
+#                   40 00 10 05 03 03 7F
+#                   40 00 10 05 03 00 00
+# Recorder play 2:  40 00 10 05 03 04 01
+#                   40 00 10 05 03 00 00
+#                   
+# Recorder play 3:  40 00 10 05 03 04 01
+#                   40 00 10 05 03 03 7F
+#                   40 00 10 05 03 00 00
+
+
+
+# Crash here:
+
+# 2022-01-21 23:44:28,276 - root - INFO - 40
+# 2022-01-21 23:44:28,276 - root - INFO - 56 28 2E 66 44 7C 7C
+# 2022-01-21 23:44:28,276 - root - INFO - 2C 2F 5E 45 0C 05 09 43 62
+
+# for msg in msg_list:
+#     data_str = " ".join(f"{x:02X}" for x in msg.data)
+#     logger.info(data_str)
+
+            data = self.generate_random_message(10)
+            msg = mido.Message(type="sysex", data = data)
+            self.output_port.send(msg)
+            msg_list.append(msg)
+            time.sleep(0.1)
+            received = self.input_port.receive(block=False)
+            if received:
+                logger.info(f"Received {received.type} with {msg.data} (old {msg.data})")
+                if received.type == "sysex":
+                    received_str = " ".join([f"{x:02X}" for x in received.data])
+                    logger.info(f"Received sysex: {received_str}")
+                elif received.type == "control_change":
+                    logger.info(f"Received Channel: {received.channel} CC: {received.control} Value: {received.value}")
+                    
+            
+            device_id +=1
+            if device_id >= 0x7F:
+                device_id = 0
+                
+            old_msg = msg
+
+    
     
 def run():
     logging.basicConfig(format='%(asctime)s %(message)s',
@@ -248,16 +353,30 @@ def run():
 
     logger.setLevel("DEBUG")
     input_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 24:0"
+    output_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 24:0"
     
     input_port = mido.open_input(input_name)
+    
+    output_port = mido.open_output(output_name)
+    
+    syx_tester = SyxTester(input_port=input_port, output_port=output_port)
+    syx_tester.test()
+    
     sysex_dict = {}
     for key in ["REG"]: #, "SYN", "ACC", "OFA"]:
         logger.info(f"Receive {key}...")
         sysex_dict[key] = FS680_sysex(name = key)
-        sysex_dict[key].from_message(message=input_port.receive())
-        #sysex_dict[key].from_hex_file(filename=key+"_pretty")
+        #sysex_dict[key].from_message(message=input_port.receive())
+        sysex_dict[key].from_hex_file(filename=key+"_pretty")
         
         sysex_dict[key].dump_to_file(filename = key + "_pretty")
+        
+        
+        
+        msg = mido.Message('sysex', data=sysex_dict[key].syx_data)
+        
+        output_port.send(msg)
+        
         
     for _,syx in sysex_dict.items():
         syx.investigate()
