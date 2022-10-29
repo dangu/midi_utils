@@ -188,6 +188,36 @@ Uploader: andrea1
 
         
         return registers  
+    
+    def get_accs(self):
+        """The acc format"""
+        offset = 6
+        
+        # Name, number of bytes, offset
+        
+        acc_mapping = []
+        for name_idx in range(1264):
+            acc_mapping.append([f"U{name_idx:04}", 2, 0])
+        
+        accs = []
+        idx = offset
+        for _ in range(5):
+            acc = []
+            for name, n_bytes, offset in acc_mapping:
+                if n_bytes == 2:
+                    acc += [[name, self.syx_data[idx+1]*0x10 + self.syx_data[idx], offset]]
+                else:
+                    acc += [[name, self.syx_data[idx], offset]]
+                idx += n_bytes
+            accs.append(acc)
+            
+        
+        for acc_idx, acc in enumerate(accs):
+            for name, value, offset in acc:
+                logger.info(f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})")
+
+        
+        return accs  
         
     def pretty_print_registers(self):
         """Pretty print registers"""
@@ -197,6 +227,15 @@ Uploader: andrea1
                 registers_str += f"{register_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})\n"
                 
         return registers_str
+    
+    def pretty_print_accs(self):
+        """Pretty print acc"""
+        accs_str = ""
+        for acc_idx, acc in enumerate(self.get_accs()):
+            for name, value, offset in acc:
+                accs_str += f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})\n"
+                
+        return accs_str
 
          
         
@@ -214,7 +253,8 @@ Uploader: andrea1
         logger.info(f"Name: {self.name} Len: {len(self.syx_data):7} Data: {self.syx_data[:10]}")
         logger.info(f"Data: {self.syx_data[:10]}")
         logger.info(f"Header: {self.parse_header()}")
-        self.get_registers()
+       # self.get_registers()
+        self.get_accs()
 #        self.dump_to_file(filename = self.name + "_pretty")
         # for idx in range(20):
         #     self.create_checksum(start_idx = idx)
@@ -224,8 +264,11 @@ Uploader: andrea1
         with open(filename, 'w') as f1:
             f1.write(self.pretty_print())
 
+        # with open(filename+"_2", 'w') as f1:
+        #     f1.write(self.pretty_print_registers())
+        
         with open(filename+"_2", 'w') as f1:
-            f1.write(self.pretty_print_registers())
+            f1.write(self.pretty_print_accs())
     
 
 class SyxTester:
@@ -352,30 +395,30 @@ def run():
     logger.addHandler(ch)
 
     logger.setLevel("DEBUG")
-    input_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 24:0"
-    output_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 24:0"
+    input_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 16:0"
+    output_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 16:0"
     
     input_port = mido.open_input(input_name)
     
     output_port = mido.open_output(output_name)
     
-    syx_tester = SyxTester(input_port=input_port, output_port=output_port)
-    syx_tester.test()
+   # syx_tester = SyxTester(input_port=input_port, output_port=output_port)
+    #syx_tester.test()
     
     sysex_dict = {}
-    for key in ["REG"]: #, "SYN", "ACC", "OFA"]:
+    for key in ["ACC"]: #["REG", "SYN", "ACC", "OFA"]:
         logger.info(f"Receive {key}...")
         sysex_dict[key] = FS680_sysex(name = key)
-        #sysex_dict[key].from_message(message=input_port.receive())
-        sysex_dict[key].from_hex_file(filename=key+"_pretty")
+        sysex_dict[key].from_message(message=input_port.receive())
+        #sysex_dict[key].from_hex_file(filename=key+"_pretty")
         
         sysex_dict[key].dump_to_file(filename = key + "_pretty")
         
         
         
-        msg = mido.Message('sysex', data=sysex_dict[key].syx_data)
+      #  msg = mido.Message('sysex', data=sysex_dict[key].syx_data)
         
-        output_port.send(msg)
+     #   output_port.send(msg)
         
         
     for _,syx in sysex_dict.items():
