@@ -3,6 +3,7 @@ import logging
 import time
 
 from random import randrange
+from pickle import NONE
 
 logger = logging.getLogger()
 #sysex data=(64,0,33,5,3,1,1,0,3,3,8,0,11,0,11,0,11,0,11,0,11,0,10,0,10,0,10,0,8,3,10,3,6,0,7,2,0,0,1,0,3,3,8,0,12,0,12,0,11,0,11,0,11,0,4,1,10,1,9,1,9,3,7,3,2,0,6,3,0,0,1,0,3,3,8,0,14,0,14,0,11,0,11,0,11,0,2,4,4,0,14,1,9,3,14,1,1,0,13,1,0,0,1,0,3,2,8,0,14,0,14,0,11,0,11,0,11,0,3,2,1,2,0,0,9,3,13,0,2,0,6,2,0,0,1,0,3,2,8,0,10,0,10,0,11,0,11,0,11,0,6,5,0,2,2,3,9,3,0,1,1,0,11,0,0,0,1,0,3,3,8,0,14,0,14,0,11,0,11,0,11,0,5,4,13,4,9,1,9,1,8,5,1,0,1,2,0,0,1,0,3,2,8,0,10,0,10,0,11,0,11,0,11,0,8,0,10,0,4,2,8,3,3,4,2,0,0,2,0,0,1,0,3,1,8,0,9,0,9,0,11,0,11,0,11,0,5,2,14,0,0,0,8,3,4,4,2,0,0,2,0,0,5,0,0,0,8,0,14,0,14,0,11,0,11,0,11,0,0,4,0,0,8,1,8,3,11,5,1,0,13,0,0,0,5,0,0,0,8,0,13,0,13,0,11,0,11,0,11,0,12,0,15,1,10,0,8,3,2,3,2,0,13,2,0,0,1,0,3,3,8,0,11,0,11,0,11,0,11,0,11,0,10,0,10,0,10,0,8,3,10,3,6,0,7,2,0,0,1,0,3,3,8,0,12,0,12,0,11,0,11,0,11,0,4,1,10,1,9,1,9,3,7,3,2,0,6,3,0,0,1,0,3,3,8,0,14,0,14,0,11,0,11,0,11,0,2,4,4,0,14,1,9,3,14,1,1,0,13,1,0,0,1,0,3,2,8,0,14,0,14,0,11,0,11,0,11,0,3,2,1,2,0,0,9,3,13,0,2,0,6,2,0,0,1,0,3,2,8,0,10,0,10,0,11,0,11,0,11,0,6,5,0,2,2,3,9,3,0,1,1,0,11,0,0,0,1,0,3,3,8,0,14,0,14,0,11,0,11,0,11,0,5,4,13,4,9,1,9,1,8,5,1,0,1,2,0,0,1,0,3,2,8,0,10,0,10,0,11,0,11,0,11,0,8,0,10,0,4,2,8,3,3,4,2,0,0,2,0,0,1,0,3,1,8,0,9,0,9,0,11,0,11,0,11,0,5,2,14,0,0,0,8,3,4,4,2,0,0,2,0,0,5,0,0,0,8,0,14,0,14,0,11,0,11,0,11,0,0,4,0,0,8,1,8,3,11,5,1,0,13,0,0,0,5,0,0,0,8,0,13,0,13,0,11,0,11,0,11,0,12,0,15,1,10,0,8,3,2,3,2,0,13,2,0,0) time=0
@@ -10,7 +11,120 @@ logger = logging.getLogger()
 # sysex data=(64,0,33,5,3,0,15,5,0,6,1,6,2,6,3,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,6,1,0,4,1,4,14,14,14,14,2,4,14,14,1,0,6,1,0,4,1,4,15,14,15,14,2,4,15,14,1,0,6,1,0,5,2,5,14,14,14,14,2,4,14,14,1,0,6,1,0,5,2,5,15,14,15,14,2,4,15,14,1,0,6,1,0,5,2,5,15,14,15,14,2,4,15,14,2,10,6,14,1,0,1,0,4,8,1,0,14,8,8,8,2,10,8,14,1,0,1,0,4,8,1,0,6,8,9,4,2,10,14,13,1,0,1,0,4,8,1,0,7,8,9,4,1,12,4,1,0,6,1,3,9,11,9,11,14,4,9,11,1,12,4,1,0,6,1,3,10,11,10,11,14,4,10,11,1,12,4,1,0,6,2,3,11,11,11,11,14,4,11,11,1,12,4,1,0,6,2,3,12,11,12,11,14,4,12,11,1,12,4,1,0,6,2,3,13,11,13,11,14,4,13,11,9,15,8,13,8,4,1,0,4,8,1,0,4,12,14,8,5,15,2,15,14,0,1,0,4,8,1,0,8,8,10,4,5,15,12,14,4,4,1,0,4,8,1,0,10,8,11,4,1,8,8,0,0,5,1,7,0,2,15,7,15,7,0,2,1,8,8,0,0,5,1,7,0,2,15,7,15,7,0,2,1,8,8,0,0,5,2,7,0,2,15,7,15,7,0,2,1,8,8,0,0,5,2,7,0,2,15,7,15,7,0,2,1,8,8,0,0,5,2,7,0,2,15,7,15,7,0,2,7,14,0,15,1,0,1,0,4,8,1,0,10,8,11,8,3,14,0,15,1,0,1,0,4,8,1,0,10,8,6,4,3,14,12,14,1,0,1,0,4,8,1,0,10,8,7,4,1,8,8,0,0,6,1,6,0,12,15,14,6,6,0,12,1,8,8,0,0,6,1,6,0,12,15,14,6,6,0,12,1,8,8,0,0,6,2,6,0,12,15,14,6,6,0,12,1,8,8,0,0,6,2,6,0,12,15,14,6,6,0,12,1,8,8,0,0,6,2,6,0,12,15,14,6,6,0,12,14,15,14,15,4,12,1,0,4,8,1,0,4,12,11,4,14,15,14,15,4,12,1,0,4,8,1,0,4,12,11,4,14,15,14,15,4,12,1,0,4,8,1,0,4,12,11,4,1,8,8,0,0,3,1,3,0,2,11,10,15,7,0,2,1,8,8,0,0,3,1,3,0,2,11,10,15,7,0,2,1,8,8,0,0,3,2,3,0,2,11,10,15,7,0,2,1,8,8,0,0,3,2,3,0,2,11,10,15,7,0,2,1,8,8,0,0,3,2,3,0,2,11,10,15,7,0,2,14,15,8,15,13,4,1,0,4,8,1,0,12,8,11,4,14,15,8,15,13,4,1,0,4,8,1,0,12,8,11,4,14,15,6,15,13,4,1,0,4,8,1,0,12,8,11,4) time=0
 # ACC
 
+ACC_START = 0xF1
 
+class FS680_ACC:
+    """Kawai FS680 ACC format
+    
+    There are five user rhythms which can
+    be sent by the sysex command ACC"""
+    class Header:
+        """ACC header"""
+        def __init__(self, raw_bytes):
+            """Init"""
+            self._raw = raw_bytes
+
+            logger.debug(f"Header: {self.as_hex()}")  
+            
+        def as_hex(self):
+            """Convert to ascii hex"""
+            return " ".join(f"{x:02X}" for x in self._raw)
+        
+    class Sequence:
+        """Sequence data"""
+        class Note:
+            """Note class"""
+            def __init__(self, raw_bytes):
+                """Init"""
+                self._raw = raw_bytes
+                try:
+                    self.pitch,self.timestamp,self.duration,self.code = raw_bytes
+                    
+                    self.velocity_idx = (self.code&0xF0) >> 4
+                    self.instrument_idx = self.code&0x0F
+                    
+                    logger.debug(f"Note: {self.to_string()}")
+                except:
+                    raise
+                
+            def to_string(self):
+                """To string"""
+                return f"Instrument: {self.instrument_idx} Pitch {self.pitch} (0x{self.pitch:02X})"
+                
+                
+                
+        def __init__(self, raw_bytes):
+            """Init"""
+            self._raw = raw_bytes
+            self._section = []
+            
+            self._parse()
+        
+        def _parse_section(self, raw_bytes):
+            """Parse a section until the next section separator"""
+            idx = 0
+            section = []
+            sections = []
+            next_section = False
+            num_of_bytes = len(raw_bytes)
+            logger.info(f"Parsing {num_of_bytes} bytes")
+            hex_str = " ".join([f"{x:02X}" for x in raw_bytes[:20]])
+            logger.debug(f"Next bytes: {hex_str} ...")
+            while(True):
+                x=raw_bytes[idx]
+                if x == ACC_START:
+                    # Start of new section
+                    idx+=1
+                    subcmd = raw_bytes[idx]
+                    logger.debug(f"Start at {idx}, subcmd {subcmd:02X}")
+                    idx+=1
+                    next_section = True
+                    break
+                else:
+                    note = self.Note(raw_bytes[idx:idx+4])
+                    section.append(note)
+                    idx += 4
+
+                if idx >= num_of_bytes:
+                    logger.debug(f"End at {idx}")
+                    break
+                
+            if not next_section:
+                logger.error("No section separator found")
+            else:
+                pass
+
+            return [section] + self._parse_section(raw_bytes[idx:])
+              
+            
+        def _parse(self):
+            """Parse sequence data"""
+            sections=self._parse_section(raw_bytes=self._raw)
+            logger.debug("Done with parsing")
+
+
+    def __init__(self):
+        """Init"""
+        self._raw = None
+        self._header = None
+        self._sequence = None
+        
+    def from_bytes(self, bytes_in):
+        """Take the given list of bytes to fill the internal
+        structure"""
+        self._raw = bytes_in
+        
+        # Header format:
+        # 00 00 02 00
+        # 36 00 50 01
+        # 1A 39 18 00
+        # 00 00 00 00
+
+        self._header = self.Header(self._raw[0:16])
+        self._sequence = self.Sequence(self._raw[16:])
+        
+        
+    
 class FS680_sysex:
     """Kawai FS680 sysex message
     F0    Sysex start
@@ -190,32 +304,144 @@ Uploader: andrea1
         return registers  
     
     def get_accs(self):
-        """The acc format"""
+        """The acc format
+Header with no Chord:
+     40 00 21 05 03 03 00 00 00 00 0A 08 00 00 06 0F 01 00 00 01 03 00 09 01 09 03 08 01 00 00 00 00
+     
+     
+Header with only one note,C (0x3C), with sound 26 (ACC_pretty_3)
+     40 00 21 05 03 03 00 00 00 00 0A 08 00 00 0A 0D 01 00 04 0F 02 00 09 01 09 03 08 01 00 00 00 00   
+                                                ^  ^        ^  ^  ^
+        
+Header with only one note,C (0x3C) with sound 27 (ACC_pretty_4)
+     40 00 21 05 03 03 00 00 00 00 0A 08 00 00 06 0D 01 00 00 0F 02 00 0A 01 09 03 08 01 00 00 00 00
+                                                ^           ^           ^ Sound?
+                
+Header full with only one note,C (0x3C), with sound 27 (ACC_pretty_5)
+     40 00 21 05 03 03 00 00 00 00 0A 08 00 00 0E 06 02 00 08 08 03 00 0A 01 09 03 08 01 00 00 00 00
+                                                ^  ^  ^     ^  ^  ^ 
+                
+Header full with only one note,C# (0x3D), velocity 15 (0x7F?), with sound 27 (ACC_pretty_6)
+     40 00 21 05 03 03 00 00 00 00 0A 08 00 00 02 08 02 00 0C 09 03 00 0A 01 09 03 08 01 00 00 00 00
+                                                ^  ^        ^  
+0D 03 09 03 02 00 0A 0F 0A 02 0C 03 02 00 0C 06
+
+
+Header full with only one note,C# (0x3D), velocity 14 (0x73?), with sound 27 (ACC_pretty_7)
+     40 00 21 05 03 03 00 00 00 00 0A 08 00 00 0A 07 02 00 04 09 03 00 0A 01 09 03 08 01 00 00 00 00
+                                                |  |        |
+        
+Three notes plus three notes: C3# C# C#..... C# C# C#.... 
+C# (0x3D), velocity 14 (0x73?), with sound 27 (ACC_pretty_8)
+0D 03 08 01 0E 00 0A 0F 04 02 08 01 0B 00 0C 0F 06 02 08 01 07 02 04 0D 00 03 08 01 03 00 0C 09 00 03 08 01 06 01 03 0D 0A 02 0E 01 02 00Note
+0D 03 09 01 0D 00 0A 0F
+0D 03 02 03 09 02 0A 0F 
+----- -----
+Note  Time1 Time2 Vel
+
+3D 18 0E FA
+3D 30 28 FA
+3D 01 0D FA     
+3D 19 0D FA    
+3D 32 29 FA   
+3D 60 0D FA
+
+9: Velocity 10
+N  T  L  VC        Note, Time, Length, Velocity, Channel
+3D 01 0A AA
+3D 18 0C AA
+3D 30 25 AA
+3D 01 0C AA
+3D 19 0C AA
+3D 31 26 AA
+
+10: Just chord notes
+
+Tags?
+F1 60    Start?
+F6
+F9 60
+F9 5A
+
+11: Some drums
+
+F1 60 
+25 01 07 FC    Drum
+3D 01 0A AA    Chord
+3D 18 0C AA    Chord 
+26 2F 08 FC    Drum
+3D 30 25 AA    Chord 
+25 60 07 FC    Drum
+F9 60 
+3D 01 0C AA    Chord
+26 18 06 FC    Drum
+3D 19 0C AA    Chord 
+26 2F 07 FC 
+3D 31 26 AA    Chord
+F1 60
+
+12: And one bass note
+F1 60 
+30 01 0B FB    Bass
+25 01 07 FC 
+3D 01 0A AA 
+3D 18 0C AA 
+26 2F 08 FC 
+3D 30 25 AA 
+25 60 07 FC 
+F9 60
+3D 01 0C AA
+26 18 06 FC
+3D 19 0C AA
+26 2F 07 FC
+3D 31 26 AA
+F1 60
+
+13: Intro gone
+14: All gone. Added one single note in each section
+
+
+
+        """
         offset = 6
         
         # Name, number of bytes, offset
         
-        acc_mapping = []
-        for name_idx in range(1264):
-            acc_mapping.append([f"U{name_idx:04}", 2, 0])
+        
+        
+        LENGTH_OF_ONE_ACC = 1264 # [bytes]
+        
+        all_nibbles = self.syx_data[offset:]
+        all_bytes = []
+        
+        for byte_idx in range(len(all_nibbles)//2):
+            nibble_idx = byte_idx*2
+            u08 = all_nibbles[nibble_idx+1]*0x10 + all_nibbles[nibble_idx]
+            all_bytes.append(u08)
+            
+        logger.debug(f"Length of all bytes: {len(all_bytes)}")
         
         accs = []
-        idx = offset
-        for _ in range(5):
-            acc = []
-            for name, n_bytes, offset in acc_mapping:
-                if n_bytes == 2:
-                    acc += [[name, self.syx_data[idx+1]*0x10 + self.syx_data[idx], offset]]
-                else:
-                    acc += [[name, self.syx_data[idx], offset]]
-                idx += n_bytes
-            accs.append(acc)
-            
-        
-        for acc_idx, acc in enumerate(accs):
-            for name, value, offset in acc:
-                logger.info(f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})")
+        for acc_idx in range(5):
+            from_idx = acc_idx*LENGTH_OF_ONE_ACC
+            to_idx = from_idx+LENGTH_OF_ONE_ACC+1
 
+            logger.info(f"ACC {acc_idx}")
+            acc = FS680_ACC()
+            acc.from_bytes(all_bytes[from_idx:to_idx])
+            accs.append(acc)
+  
+        
+        # for acc_idx, acc in enumerate(accs):
+        #     for name, value, offset in acc:
+        #         logger.info(f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})")
+
+        # for acc_idx, acc in enumerate(acc4s):
+        #     for data in acc:
+        #
+        #         str_data = " ".join(f"{x:02X}" for x in data['data'])
+        #         logger.info(f"{data['name']} {str_data}")
+        #    logger.info(f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})")
         
         return accs  
         
@@ -231,9 +457,20 @@ Uploader: andrea1
     def pretty_print_accs(self):
         """Pretty print acc"""
         accs_str = ""
-        for acc_idx, acc in enumerate(self.get_accs()):
-            for name, value, offset in acc:
-                accs_str += f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})\n"
+        # for acc_idx, acc in enumerate(self.get_accs()):
+        #     for name, value, offset in acc:
+        #         accs_str += f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})\n"
+        #
+
+        col = 0
+        max_col = 4
+        accs0 = self.get_accs()[0]
+        for element in accs0:
+            accs_str += f"{element['data']:02X} "
+            col += 1
+            if col >= max_col:
+                accs_str = accs_str[:-1] + "\n"
+                col = 0
                 
         return accs_str
 
@@ -249,11 +486,18 @@ Uploader: andrea1
             
         
     def investigate(self):
-        """Investigate data"""
+        """Investigate data
+        At startup:
+        
+        
+        
+        
+        
+        """
         logger.info(f"Name: {self.name} Len: {len(self.syx_data):7} Data: {self.syx_data[:10]}")
         logger.info(f"Data: {self.syx_data[:10]}")
         logger.info(f"Header: {self.parse_header()}")
-       # self.get_registers()
+        #self.get_registers()
         self.get_accs()
 #        self.dump_to_file(filename = self.name + "_pretty")
         # for idx in range(20):
@@ -267,7 +511,7 @@ Uploader: andrea1
         # with open(filename+"_2", 'w') as f1:
         #     f1.write(self.pretty_print_registers())
         
-        with open(filename+"_2", 'w') as f1:
+        with open(filename+"_u08", 'w') as f1:
             f1.write(self.pretty_print_accs())
     
 
@@ -277,7 +521,7 @@ class SyxTester:
         """Init"""
         self.input_port = input_port
         self.output_port = output_port
-        
+               
     def generate_random_message(self, max_len):
         """Generate random message"""
         msg_len = randrange(1, max_len)
@@ -288,6 +532,12 @@ class SyxTester:
 #        logger.info(msg)
         return msg
         
+    def get_all(self):
+        """Get all messages"""
+        while True:
+            data_in = self.input_port.receive()
+            logger.debug(f"Type: {data_in.type} Data: {data_in.hex(' ')}")
+                         
     def test(self):
         """Test sysex messages"""
 
@@ -338,8 +588,9 @@ class SyxTester:
 # Recorder play 3:  40 00 10 05 03 04 01
 #                   40 00 10 05 03 03 7F
 #                   40 00 10 05 03 00 00
-
-
+#
+# At startup:         40 00 10 05 03 00 00    Sound 1
+#                     40 00 10 05 03 02 7F    Sustain on
 
 # Crash here:
 
@@ -375,6 +626,7 @@ class SyxTester:
     
     
 def run():
+    base_path = "dumps"
     logging.basicConfig(format='%(asctime)s %(message)s',
                         filename='mido.log', 
                         encoding='utf-8',
@@ -395,24 +647,26 @@ def run():
     logger.addHandler(ch)
 
     logger.setLevel("DEBUG")
-    input_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 16:0"
-    output_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 16:0"
+    input_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 24:0"
+    output_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 24:0"
     
     input_port = mido.open_input(input_name)
     
     output_port = mido.open_output(output_name)
     
-   # syx_tester = SyxTester(input_port=input_port, output_port=output_port)
-    #syx_tester.test()
+    # syx_tester = SyxTester(input_port=input_port, output_port=output_port)
+    # syx_tester.get_all()
     
+
     sysex_dict = {}
     for key in ["ACC"]: #["REG", "SYN", "ACC", "OFA"]:
         logger.info(f"Receive {key}...")
         sysex_dict[key] = FS680_sysex(name = key)
-        sysex_dict[key].from_message(message=input_port.receive())
-        #sysex_dict[key].from_hex_file(filename=key+"_pretty")
+        #sysex_dict[key].from_message(message=input_port.receive())
+
+        sysex_dict[key].from_hex_file(filename=base_path + "/" + key+"_pretty_14")
         
-        sysex_dict[key].dump_to_file(filename = key + "_pretty")
+        sysex_dict[key].dump_to_file(filename = base_path + "/" + key + "_pretty")
         
         
         
