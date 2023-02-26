@@ -12,10 +12,13 @@ logger = logging.getLogger()
 # ACC
 
 ACC_START = 0xF1
+ACC_F9    = 0xF9
+ACC_F8    = 0xF8
+
 
 class FS680_ACC:
     """Kawai FS680 ACC format
-    
+   
     There are five user rhythms which can
     be sent by the sysex command ACC"""
     class Header:
@@ -25,11 +28,11 @@ class FS680_ACC:
             self._raw = raw_bytes
 
             logger.debug(f"Header: {self.as_hex()}")  
-            
+           
         def as_hex(self):
             """Convert to ascii hex"""
             return " ".join(f"{x:02X}" for x in self._raw)
-        
+       
     class Sequence:
         """Sequence data"""
         class Note:
@@ -39,35 +42,36 @@ class FS680_ACC:
                 self._raw = raw_bytes
                 try:
                     self.pitch,self.timestamp,self.duration,self.code = raw_bytes
-                    
+                   
                     self.velocity_idx = (self.code&0xF0) >> 4
                     self.instrument_idx = self.code&0x0F
-                    
+                   
                     logger.debug(f"Note: {self.to_string()}")
                 except:
                     raise
-                
+               
             def to_string(self):
                 """To string"""
                 return f"Instrument: {self.instrument_idx} Pitch {self.pitch} (0x{self.pitch:02X})"
-                
-                
-                
+               
+               
+               
         def __init__(self, raw_bytes):
             """Init"""
             self._raw = raw_bytes
             self._section = []
-            
+           
             self._parse()
-        
-        def _parse_section(self, raw_bytes):
+       
+        def _parse_section(self, raw_bytes, section_idx):
             """Parse a section until the next section separator"""
             idx = 0
             section = []
             sections = []
             next_section = False
+            section_done = False
             num_of_bytes = len(raw_bytes)
-            logger.info(f"Parsing {num_of_bytes} bytes")
+            logger.info(f"Section {section_idx}: Parsing {num_of_bytes} bytes")
             hex_str = " ".join([f"{x:02X}" for x in raw_bytes[:20]])
             logger.debug(f"Next bytes: {hex_str} ...")
             while(True):
@@ -78,28 +82,60 @@ class FS680_ACC:
                     subcmd = raw_bytes[idx]
                     logger.debug(f"Start at {idx}, subcmd {subcmd:02X}")
                     idx+=1
+                    if idx>=num_of_bytes:
+                        logger.debug("End of ACC")
+                        section_done = True
+                        break
+                    data1 = raw_bytes[idx]
+                    if subcmd == 0x60 and data1 in [0x04]:
+                        idx+=1
+                        data2 = raw_bytes[idx]
+                        logger.debug(f"Special case: F1 60 and {data1:02X} {data2:02X}")
+                        idx+=1
                     next_section = True
                     break
+                elif x == ACC_F9:
+                    idx+=1
+                    subcmd = raw_bytes[idx]
+                    logger.debug(f"0xF9 at {idx}, subcmd {subcmd:02X}")
+                    idx+=1
+                elif x == ACC_F8:
+                    idx+=1
+                    timestamp = raw_bytes[idx]
+                    idx+=3
+                    # The next two bytes are unknown
+                elif section_idx == 10:
+                    logger.debug("Section 10")
+                    idx+=4*16+6
+                    hex_str = " ".join([f"{x:02X}" for x in raw_bytes[idx:idx+20]])
+                    logger.debug(f"Next bytes: {hex_str} ...")
                 else:
                     note = self.Note(raw_bytes[idx:idx+4])
                     section.append(note)
                     idx += 4
+                    hex_str = " ".join([f"{x:02X}" for x in raw_bytes[idx:idx+20]])
+                    logger.debug(f"Next bytes: {hex_str} ...")
+
 
                 if idx >= num_of_bytes:
                     logger.debug(f"End at {idx}")
                     break
+            
+            if section_done:
+                return [section]
                 
             if not next_section:
                 logger.error("No section separator found")
             else:
                 pass
 
-            return [section] + self._parse_section(raw_bytes[idx:])
+            return [section] + self._parse_section(raw_bytes[idx:], section_idx+1)
               
             
         def _parse(self):
             """Parse sequence data"""
-            sections=self._parse_section(raw_bytes=self._raw)
+            sections=self._parse_section(raw_bytes=self._raw,
+                                         section_idx=0)
             logger.debug("Done with parsing")
 
 
@@ -134,11 +170,19 @@ class FS680_sysex:
         """Init"""
         self.name = name
         self.syx_data = None
+
+    def from_syx_file(self, filename):
+        """Read syx file"""
+        messages=mido.read_syx_file(filename)
+        if len(messages) != 1:
+            logger.error("Number of messages in syx file is not 1")
+            raise
+        self.syx_data=messages[0].data
         
     def from_message(self, message):
         """Set message"""
         self.syx_data = message.data
-        
+       
     def from_hex_file(self, filename):
         """Get data from file with hex data"""
         self.syx_data = []
@@ -161,6 +205,19 @@ class FS680_sysex:
             
         self.syx_data = self.file_data  #[1:-1]
         
+    def _pretty_print(self, data, max_col=16):
+        """Pretty print the given data"""
+        col = 0
+        pretty_string = ""
+        for data_byte in data:
+            pretty_string += f"{data_byte:02X} "
+            col += 1
+            if col >= max_col:
+                pretty_string = pretty_string[:-1] + "\n"
+                col = 0
+        return pretty_string
+     
+            
     def pretty_print(self):
         """Pretty print data
         REG:
@@ -220,15 +277,7 @@ Uploader: andrea1
 96  EOX            11110111   F7H
         
         """
-        col = 0
-        max_col = 16
-        pretty_string = ""
-        for data_byte in self.syx_data:
-            pretty_string += f"{data_byte:02X} "
-            col += 1
-            if col >= max_col:
-                pretty_string = pretty_string[:-1] + "\n"
-                col = 0
+        pretty_string = self._pretty_print(self.syx_data, max_col=16)
         return pretty_string
     
     def parse_header(self):
@@ -421,10 +470,13 @@ F1 60
             
         logger.debug(f"Length of all bytes: {len(all_bytes)}")
         
+        with open("dumps/sysex_hex2.txt", "wb") as f1:
+            f1.write(self._pretty_print(all_bytes, max_col=16).encode("UTF8"))
+        
         accs = []
         for acc_idx in range(5):
             from_idx = acc_idx*LENGTH_OF_ONE_ACC
-            to_idx = from_idx+LENGTH_OF_ONE_ACC+1
+            to_idx = from_idx+LENGTH_OF_ONE_ACC
 
             logger.info(f"ACC {acc_idx}")
             acc = FS680_ACC()
@@ -464,8 +516,8 @@ F1 60
 
         col = 0
         max_col = 4
-        accs0 = self.get_accs()[0]
-        for element in accs0:
+        accs = self.get_accs()
+        for acc in accs:
             accs_str += f"{element['data']:02X} "
             col += 1
             if col >= max_col:
@@ -650,9 +702,9 @@ def run():
     input_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 24:0"
     output_name = "M Audio Audiophile 24/96:M Audio Audiophile 24/96 MIDI 24:0"
     
-    input_port = mido.open_input(input_name)
+#    input_port = mido.open_input(input_name)
     
-    output_port = mido.open_output(output_name)
+ #   output_port = mido.open_output(output_name)
     
     # syx_tester = SyxTester(input_port=input_port, output_port=output_port)
     # syx_tester.get_all()
@@ -664,9 +716,10 @@ def run():
         sysex_dict[key] = FS680_sysex(name = key)
         #sysex_dict[key].from_message(message=input_port.receive())
 
-        sysex_dict[key].from_hex_file(filename=base_path + "/" + key+"_pretty_14")
+        sysex_dict[key].from_syx_file(filename=base_path + "/" + "out3.syx")
+  #      sysex_dict[key].from_hex_file(filename=base_path + "/" + key+"_pretty_14")
         
-        sysex_dict[key].dump_to_file(filename = base_path + "/" + key + "_pretty")
+        sysex_dict[key].dump_to_file(filename=base_path + "/" + key + "_pretty")
         
         
         
