@@ -36,7 +36,12 @@ class FS680_ACC:
     class Sequence:
         """Sequence data"""
         class Note:
-            """Note class"""
+            """Note class
+            
+            instrument_idx    Type    Channel
+            0xC               Drums   Channel 9 (10)
+            
+            """
             def __init__(self, raw_bytes):
                 """Init"""
                 self._raw = raw_bytes
@@ -87,13 +92,21 @@ class FS680_ACC:
                         section_done = True
                         break
                     data1 = raw_bytes[idx]
-                    if subcmd == 0x60 and data1 in [0x04]:
+                    if subcmd == 0x60 and data1 in [0x04, 0x24]:
                         idx+=1
                         data2 = raw_bytes[idx]
                         logger.debug(f"Special case: F1 60 and {data1:02X} {data2:02X}")
                         idx+=1
                     next_section = True
                     break
+                elif x == 0x03:
+                    logger.debug("0x03-section")
+                    idx+=4*16+6
+                    hex_str = " ".join([f"{x:02X}" for x in raw_bytes[idx:idx+20]])
+                    logger.debug(f"Next bytes: {hex_str} ...")
+                elif x == 0x56:
+                    logger.debug(f"0x56-section")
+                    idx+=6*16+8
                 elif x == ACC_F9:
                     idx+=1
                     subcmd = raw_bytes[idx]
@@ -104,11 +117,7 @@ class FS680_ACC:
                     timestamp = raw_bytes[idx]
                     idx+=3
                     # The next two bytes are unknown
-                elif section_idx == 10:
-                    logger.debug("Section 10")
-                    idx+=4*16+6
-                    hex_str = " ".join([f"{x:02X}" for x in raw_bytes[idx:idx+20]])
-                    logger.debug(f"Next bytes: {hex_str} ...")
+
                 else:
                     note = self.Note(raw_bytes[idx:idx+4])
                     section.append(note)
@@ -134,16 +143,38 @@ class FS680_ACC:
             
         def _parse(self):
             """Parse sequence data"""
-            sections=self._parse_section(raw_bytes=self._raw,
+            self._sections=self._parse_section(raw_bytes=self._raw,
                                          section_idx=0)
             logger.debug("Done with parsing")
 
+        def get_sections(self):
+            """Get sections"""
+            return self._sections
 
     def __init__(self):
         """Init"""
         self._raw = None
         self._header = None
         self._sequence = None
+        
+
+    def dump_to_hex_file(self, filename, max_row_length=16):
+        """Dump to hex file"""
+       
+        col = 0
+        row = 0
+        pretty_string = f"{row*max_row_length:04X}: "
+
+        for data_byte in self._raw:
+            pretty_string += f"{data_byte:02X} "
+            col += 1
+            if col >= max_row_length:
+                row+=1
+                pretty_string = pretty_string[:-1] + "\n"
+                pretty_string += f"{row*max_row_length:04X}: "
+                col = 0
+        with open(filename, "wb") as f1:
+            f1.write(pretty_string.encode("UTF8"))
         
     def from_bytes(self, bytes_in):
         """Take the given list of bytes to fill the internal
@@ -159,7 +190,9 @@ class FS680_ACC:
         self._header = self.Header(self._raw[0:16])
         self._sequence = self.Sequence(self._raw[16:])
         
-        
+    def get_sequence(self):
+        """Get the sequences"""
+        return self._sequence
     
 class FS680_sysex:
     """Kawai FS680 sysex message
@@ -481,6 +514,8 @@ F1 60
             logger.info(f"ACC {acc_idx}")
             acc = FS680_ACC()
             acc.from_bytes(all_bytes[from_idx:to_idx])
+            filename = f"dumps/ACC{acc_idx}_hex_dump.txt"
+            acc.dump_to_hex_file(filename)
             accs.append(acc)
   
         
@@ -517,13 +552,19 @@ F1 60
         col = 0
         max_col = 4
         accs = self.get_accs()
-        for acc in accs:
-            accs_str += f"{element['data']:02X} "
-            col += 1
-            if col >= max_col:
-                accs_str = accs_str[:-1] + "\n"
-                col = 0
-                
+        for acc_idx,acc in enumerate(accs):
+            logger.debug(f"ACC idx {acc_idx}")
+            seq=acc.get_sequence()
+            sections=seq.get_sections()
+            secs_with_notes = []
+            for idx,section in enumerate(sections):
+                if len(section) > 0:
+                    secs_with_notes.append({'sec':idx,
+                                            'num_notes':len(section)})
+            
+            for x in secs_with_notes:
+                logger.debug(f"Sec {x['sec']}, notes: {x['num_notes']}")
+
         return accs_str
 
          
@@ -728,8 +769,8 @@ def run():
      #   output_port.send(msg)
         
         
-    for _,syx in sysex_dict.items():
-        syx.investigate()
+    # for _,syx in sysex_dict.items():
+    #     syx.investigate()
         
     logger.info("Done")
 
