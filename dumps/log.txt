@@ -17,3 +17,24 @@ Sista datat verkar vara på 0x4A4
 0x242 = 578
 0x358 = 856
 0x35C = 860
+
+----------------------
+New version. 1 has bass notes added until FUL
+0:
+04E0: 54 5A 03 D2 4F 5A 03 D2 60 5A 02 D2 F9 60 F1 60
+
+1:
+0000: 00 00 8A 00 86 02 A0 03 19 39 18 00 00 00 00 00
+
+04E0: 60 5A 02 D2 F9 60 F1 60 60 5A 02 D2 F9 60 F1 60
+                  |---------|
+
+0x286 = 646
+0x3A0 = 928
+		  
+3,4:
+It suddenly added F6 5D 40 02 just before F9 60, adding 8 bytes and not the 4 for the new bass note.
+Earlier in the sequence (at 00B0), there are more F6:s:
+F6 01 00 03
+F6 03 1C 03
+F6 05 40 03
