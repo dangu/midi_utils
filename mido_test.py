@@ -81,8 +81,9 @@ class FS680_ACC:
             """Note class
             
             instrument_idx    Type    Channel
-            0xC               Drums   Channel 9 (10)
-            0b10            Chord
+            2    0b010        Chord
+            3    0b011        Bass
+            4    0b100        Drums   Channel 9 (10)
             
             """
             def __init__(self, raw_bytes):
@@ -100,9 +101,11 @@ class FS680_ACC:
                
             def to_string(self):
                 """To string"""
-                str_tmp=f"Instrument: {self.instrument_idx} "
-                str_tmp+=f"Pitch {self.pitch} (0x{self.pitch:02X}) "
-                str_tmp+=f"Velocity {self.velocity_idx} (0x{self.velocity_idx:02X})"
+                str_tmp=f"t: {self.timestamp} "
+                str_tmp+=f"Instr: {self.instrument_idx} "
+                str_tmp+=f"Pitch: {self.pitch} (0x{self.pitch:02X}) "
+                str_tmp+=f"Vel: {self.velocity_idx} (0x{self.velocity_idx:02X}) "
+                str_tmp+=f"Dur: {self.duration} (0x{self.duration:02X})"
                 
                 return str_tmp
                
@@ -115,6 +118,42 @@ class FS680_ACC:
            
             self._parse()
        
+        def play(self,outport):
+            """Play the sequence"""
+            # Mapping instrument index to channel
+            chn={2:2,
+                 3:3,
+                 4:9}
+            t0=time.time()
+            ticksPerSecond = 40
+            noteOffList=[]
+            for note in self._data:
+                while(True):
+                    t = (time.time()-t0)*ticksPerSecond
+                    if t >= note.timestamp:
+                        logger.debug(note.timestamp)
+                        logger.debug(f"{note.to_string()}")
+                        msg=mido.Message('note_on')
+                        msg.channel=chn[note.instrument_idx]
+                        msg.note=note.pitch
+                        msg.time = note.timestamp
+                        msg.velocity=note.velocity_idx
+                        logger.debug(f"{msg}")
+                        outport.send(msg)
+                        msgNoteOff=msg.copy()
+                        msgNoteOff.time=note.timestamp+note.duration
+                        msgNoteOff.velocity=0
+                        noteOffList.append(msgNoteOff)
+                        noteOffList.sort(key=lambda x: x.time, reverse=False)
+                        break
+                if len(noteOffList) > 0 and t >= noteOffList[0].time:
+                    outport.send(noteOffList[0])
+                    if len(noteOffList)>1:
+                        noteOffList = noteOffList[1:]
+                    else:
+                        noteOffList = []
+                time.sleep(0.01)
+                
         def _parse_section(self, raw_bytes, section_idx):
             """Parse a section until the next section separator"""
             idx = 0
@@ -560,19 +599,7 @@ F1 60
             filename = f"dumps/ACC{acc_idx}_hex_dump.txt"
             acc.dump_to_hex_file(filename)
             accs.append(acc)
-  
-        
-        # for acc_idx, acc in enumerate(accs):
-        #     for name, value, offset in acc:
-        #         logger.info(f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})")
-
-        # for acc_idx, acc in enumerate(acc4s):
-        #     for data in acc:
-        #
-        #         str_data = " ".join(f"{x:02X}" for x in data['data'])
-        #         logger.info(f"{data['name']} {str_data}")
-        #    logger.info(f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})")
-        
+          
         return accs  
         
     def pretty_print_registers(self):
@@ -587,10 +614,6 @@ F1 60
     def pretty_print_accs(self):
         """Pretty print acc"""
         accs_str = ""
-        # for acc_idx, acc in enumerate(self.get_accs()):
-        #     for name, value, offset in acc:
-        #         accs_str += f"{acc_idx+1:02} {name:7s}: {value+offset:02}  ({value:02}, {value:02X})\n"
-        #
 
         col = 0
         max_col = 4
@@ -626,7 +649,16 @@ F1 60
         logger.info(f"Data: {self.syx_data[:10]}")
         logger.info(f"Header: {self.parse_header()}")
         #self.get_registers()
-        self.get_accs()
+        accs=self.get_accs()
+        
+        logger.debug(mido.get_input_names())
+        out_name = 'E-MU 0404 | USB:E-MU 0404 | USB MIDI 1 20:0'
+
+        with mido.open_output(out_name) as outport:
+            for acc in accs:
+                for name,sequence in acc.get_sequences().items():
+                    logger.debug(f"Name: {name}")
+                    sequence.play(outport=outport)
 #        self.dump_to_file(filename = self.name + "_pretty")
         # for idx in range(20):
         #     self.create_checksum(start_idx = idx)
@@ -638,9 +670,9 @@ F1 60
 
         # with open(filename+"_2", 'w') as f1:
         #     f1.write(self.pretty_print_registers())
-        
-        with open(filename+"_u08", 'w') as f1:
-            f1.write(self.pretty_print_accs())
+        #
+        # with open(filename+"_u08", 'w') as f1:
+        #     f1.write(self.pretty_print_accs())
     
 
 class SyxTester:
@@ -804,8 +836,8 @@ def run():
      #   output_port.send(msg)
         
         
-    # for _,syx in sysex_dict.items():
-    #     syx.investigate()
+    for _,syx in sysex_dict.items():
+        syx.investigate()
         
     logger.info("Done")
 
