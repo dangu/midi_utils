@@ -1,6 +1,7 @@
 import mido
 import logging
 import time
+import struct
 
 from random import randrange
 from pickle import NONE
@@ -11,7 +12,7 @@ logger = logging.getLogger()
 # sysex data=(64,0,33,5,3,0,15,5,0,6,1,6,2,6,3,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,6,1,0,4,1,4,14,14,14,14,2,4,14,14,1,0,6,1,0,4,1,4,15,14,15,14,2,4,15,14,1,0,6,1,0,5,2,5,14,14,14,14,2,4,14,14,1,0,6,1,0,5,2,5,15,14,15,14,2,4,15,14,1,0,6,1,0,5,2,5,15,14,15,14,2,4,15,14,2,10,6,14,1,0,1,0,4,8,1,0,14,8,8,8,2,10,8,14,1,0,1,0,4,8,1,0,6,8,9,4,2,10,14,13,1,0,1,0,4,8,1,0,7,8,9,4,1,12,4,1,0,6,1,3,9,11,9,11,14,4,9,11,1,12,4,1,0,6,1,3,10,11,10,11,14,4,10,11,1,12,4,1,0,6,2,3,11,11,11,11,14,4,11,11,1,12,4,1,0,6,2,3,12,11,12,11,14,4,12,11,1,12,4,1,0,6,2,3,13,11,13,11,14,4,13,11,9,15,8,13,8,4,1,0,4,8,1,0,4,12,14,8,5,15,2,15,14,0,1,0,4,8,1,0,8,8,10,4,5,15,12,14,4,4,1,0,4,8,1,0,10,8,11,4,1,8,8,0,0,5,1,7,0,2,15,7,15,7,0,2,1,8,8,0,0,5,1,7,0,2,15,7,15,7,0,2,1,8,8,0,0,5,2,7,0,2,15,7,15,7,0,2,1,8,8,0,0,5,2,7,0,2,15,7,15,7,0,2,1,8,8,0,0,5,2,7,0,2,15,7,15,7,0,2,7,14,0,15,1,0,1,0,4,8,1,0,10,8,11,8,3,14,0,15,1,0,1,0,4,8,1,0,10,8,6,4,3,14,12,14,1,0,1,0,4,8,1,0,10,8,7,4,1,8,8,0,0,6,1,6,0,12,15,14,6,6,0,12,1,8,8,0,0,6,1,6,0,12,15,14,6,6,0,12,1,8,8,0,0,6,2,6,0,12,15,14,6,6,0,12,1,8,8,0,0,6,2,6,0,12,15,14,6,6,0,12,1,8,8,0,0,6,2,6,0,12,15,14,6,6,0,12,14,15,14,15,4,12,1,0,4,8,1,0,4,12,11,4,14,15,14,15,4,12,1,0,4,8,1,0,4,12,11,4,14,15,14,15,4,12,1,0,4,8,1,0,4,12,11,4,1,8,8,0,0,3,1,3,0,2,11,10,15,7,0,2,1,8,8,0,0,3,1,3,0,2,11,10,15,7,0,2,1,8,8,0,0,3,2,3,0,2,11,10,15,7,0,2,1,8,8,0,0,3,2,3,0,2,11,10,15,7,0,2,1,8,8,0,0,3,2,3,0,2,11,10,15,7,0,2,14,15,8,15,13,4,1,0,4,8,1,0,12,8,11,4,14,15,8,15,13,4,1,0,4,8,1,0,12,8,11,4,14,15,6,15,13,4,1,0,4,8,1,0,12,8,11,4) time=0
 # ACC
 
-ACC_START = 0xF1
+ACC_F1 = 0xF1
 ACC_F9    = 0xF9
 ACC_F8    = 0xF8
 
@@ -20,18 +21,59 @@ class FS680_ACC:
     """Kawai FS680 ACC format
    
     There are five user rhythms which can
-    be sent by the sysex command ACC"""
+    be sent by the sysex command ACC. Each user rhytm
+    consist of a header and data."""
     class Header:
-        """ACC header"""
+        """ACC header
+                                 |- Chord voice                 
+                                 |  |- Bass voice
+                                 |  |  |- Unknown
+        00 00 02 00 5A 01 FC 01 19 39 18 00 00 00 00 00
+        |---| |---| |---| |---|
+          ^--------------------- Start of intro
+                ^--------------- Start of main
+                      ^--------- Start of fill
+                            ^--- Start of ending
+
+        Voice           Number on display
+        0x19=25            26
+        0x1A=26            27
+        0x39=57            58
+        
+        
+        """
         def __init__(self, raw_bytes):
             """Init"""
             self._raw = raw_bytes
-
-            logger.debug(f"Header: {self.as_hex()}")  
-           
-        def as_hex(self):
+            self._structFormat = "<HHHHBBB5s"
+            self._names = ['intro',
+                           'main',
+                           'fill',
+                           'end',
+                           'voice_chord',
+                           'voice_bass',
+                           'unknown1',
+                           'unknown2']
+            
+            self._parts = self._as_dict()
+            for name,value in self._parts.items():
+                setattr(self,name,value)
+            logger.debug(f"Header: {self._as_hex()}")  
+            logger.debug(f"Header: {self._as_dict()}")  
+            
+        def _as_hex(self):
             """Convert to ascii hex"""
             return " ".join(f"{x:02X}" for x in self._raw)
+        
+        def _as_dict(self):
+            """Return as dict"""
+            parts=struct.unpack(self._structFormat, bytearray(self._raw))
+            
+            header = {}
+            for name, part in zip(self._names, parts):
+                header[name] = part
+            
+            return header
        
     class Sequence:
         """Sequence data"""
@@ -40,6 +82,7 @@ class FS680_ACC:
             
             instrument_idx    Type    Channel
             0xC               Drums   Channel 9 (10)
+            0b10            Chord
             
             """
             def __init__(self, raw_bytes):
@@ -48,8 +91,8 @@ class FS680_ACC:
                 try:
                     self.pitch,self.timestamp,self.duration,self.code = raw_bytes
                    
-                    self.velocity_idx = (self.code&0xF0) >> 4
-                    self.instrument_idx = self.code&0x0F
+                    self.velocity_idx = (self.code) >> 3
+                    self.instrument_idx = self.code&0b111
                    
                     logger.debug(f"Note: {self.to_string()}")
                 except:
@@ -57,14 +100,18 @@ class FS680_ACC:
                
             def to_string(self):
                 """To string"""
-                return f"Instrument: {self.instrument_idx} Pitch {self.pitch} (0x{self.pitch:02X})"
+                str_tmp=f"Instrument: {self.instrument_idx} "
+                str_tmp+=f"Pitch {self.pitch} (0x{self.pitch:02X}) "
+                str_tmp+=f"Velocity {self.velocity_idx} (0x{self.velocity_idx:02X})"
+                
+                return str_tmp
                
                
                
         def __init__(self, raw_bytes):
             """Init"""
             self._raw = raw_bytes
-            self._section = []
+            self._data = []
            
             self._parse()
        
@@ -80,33 +127,30 @@ class FS680_ACC:
             hex_str = " ".join([f"{x:02X}" for x in raw_bytes[:20]])
             logger.debug(f"Next bytes: {hex_str} ...")
             while(True):
-                x=raw_bytes[idx]
-                if x == ACC_START:
-                    # Start of new section
+                try:
+                    x=raw_bytes[idx]
+                except:
+                    raise
+                if x == ACC_F1:
+                    # End of section
                     idx+=1
                     subcmd = raw_bytes[idx]
-                    logger.debug(f"Start at {idx}, subcmd {subcmd:02X}")
+                    logger.debug(f"End at {idx}, subcmd {subcmd:02X}")
                     idx+=1
-                    if idx>=num_of_bytes:
-                        logger.debug("End of ACC")
-                        section_done = True
-                        break
-                    data1 = raw_bytes[idx]
-                    if subcmd == 0x60 and data1 in [0x04, 0x24]:
-                        idx+=1
-                        data2 = raw_bytes[idx]
-                        logger.debug(f"Special case: F1 60 and {data1:02X} {data2:02X}")
-                        idx+=1
-                    next_section = True
+                    
+                    section_done = True
                     break
                 elif x == 0x03:
                     logger.debug("0x03-section")
                     idx+=4*16+6
                     hex_str = " ".join([f"{x:02X}" for x in raw_bytes[idx:idx+20]])
                     logger.debug(f"Next bytes: {hex_str} ...")
-                elif x == 0x56:
-                    logger.debug(f"0x56-section")
-                    idx+=6*16+8
+                # elif x == 0x56:
+                #     logger.debug(f"0x56-section")
+                #     idx+=6*16+8
+                elif x == 0xF6:
+                    # F6 4E 40 02 appears after drums in a test
+                    idx += 4
                 elif x == ACC_F9:
                     idx+=1
                     subcmd = raw_bytes[idx]
@@ -124,38 +168,28 @@ class FS680_ACC:
                     idx += 4
                     hex_str = " ".join([f"{x:02X}" for x in raw_bytes[idx:idx+20]])
                     logger.debug(f"Next bytes: {hex_str} ...")
-
-
-                if idx >= num_of_bytes:
-                    logger.debug(f"End at {idx}")
-                    break
             
-            if section_done:
-                return [section]
-                
-            if not next_section:
+            if not section_done:
                 logger.error("No section separator found")
-            else:
-                pass
-
-            return [section] + self._parse_section(raw_bytes[idx:], section_idx+1)
-              
+                
+            return section
+                          
             
         def _parse(self):
             """Parse sequence data"""
-            self._sections=self._parse_section(raw_bytes=self._raw,
+            self._data=self._parse_section(raw_bytes=self._raw,
                                          section_idx=0)
             logger.debug("Done with parsing")
 
-        def get_sections(self):
-            """Get sections"""
-            return self._sections
+        def get_data(self):
+            """Get data"""
+            return self._data
 
     def __init__(self):
         """Init"""
         self._raw = None
         self._header = None
-        self._sequence = None
+        self._sequences = None
         
 
     def dump_to_hex_file(self, filename, max_row_length=16):
@@ -187,12 +221,21 @@ class FS680_ACC:
         # 1A 39 18 00
         # 00 00 00 00
 
-        self._header = self.Header(self._raw[0:16])
-        self._sequence = self.Sequence(self._raw[16:])
+        HEADER_SIZE = 16
+        data={}
+        data['header'] = self._raw[0:HEADER_SIZE]
         
-    def get_sequence(self):
+        self._header = self.Header(data['header'])
+        
+        # When the header is parsed, the part positions are known
+        self._sequences={}
+        for name in ['intro', 'main', 'fill', 'end']:
+            dataToParse = self._raw[HEADER_SIZE + getattr(self._header,name):]
+            self._sequences[name] = self.Sequence(dataToParse)
+        
+    def get_sequences(self):
         """Get the sequences"""
-        return self._sequence
+        return self._sequences
     
 class FS680_sysex:
     """Kawai FS680 sysex message
@@ -554,16 +597,8 @@ F1 60
         accs = self.get_accs()
         for acc_idx,acc in enumerate(accs):
             logger.debug(f"ACC idx {acc_idx}")
-            seq=acc.get_sequence()
-            sections=seq.get_sections()
-            secs_with_notes = []
-            for idx,section in enumerate(sections):
-                if len(section) > 0:
-                    secs_with_notes.append({'sec':idx,
-                                            'num_notes':len(section)})
-            
-            for x in secs_with_notes:
-                logger.debug(f"Sec {x['sec']}, notes: {x['num_notes']}")
+            for name,seq in acc.get_sequences().items():
+                logger.debug(f"Seq {name} has {len(seq.get_data())} notes")
 
         return accs_str
 
