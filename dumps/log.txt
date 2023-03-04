@@ -38,3 +38,16 @@ Earlier in the sequence (at 00B0), there are more F6:s:
 F6 01 00 03
 F6 03 1C 03
 F6 05 40 03
+
+F1: 11110001
+F6: 11110110
+F8: 11111000
+F9: 11111001
+
+-----------------------------
+New version. 0: Removed all bass notes from ending
+The heading stays the same:
+0000: 00 00 8A 00 86 02 A0 03 19 39 18 00 00 00 00 00
+
+First note of ending seems to be at 03B0
+Aha! The header is 0x10 long. 0x3A0 could be le
